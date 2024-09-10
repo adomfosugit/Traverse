@@ -1,0 +1,200 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  name String?
+  email String? @unique
+  accountVerified DateTime?
+  image String?
+  hashedPassword String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  favoriteIds String[] @db.ObjectId
+  purchasedLandIds String[] @db.ObjectId
+
+  accounts Account[]
+  serviceProvider ServiceProvider?
+  bids Bid[]
+  lands Land[]
+
+}
+
+model ServiceProvider {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @db.ObjectId @unique
+  initialPassword String?
+  country String
+  profession String
+  phone String
+  officeAddress String
+  businessName String
+  email String
+  professionalMembership String
+  membershipId String?
+  accountVerified DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+  images LandImage[]
+  services LandService[]
+  user User @relation(fields: [userId], references: [id])
+  @@unique([email, userId])
+}
+
+model LandService {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  landId String @db.ObjectId
+  serviceProviderId String @db.ObjectId
+  toBeCompletedOn DateTime
+  completedOn DateTime
+  serviceProvided String //Corresponds to the stages of a land purchase - Use an enum in the future
+  serviceStatus String @default("open")
+
+  documents Document[]
+  images LandImage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  land Land @relation(fields: [landId], references: [id])
+  serviceProvider ServiceProvider @relation(fields: [serviceProviderId], references: [id])
+
+  @@unique([landId, serviceProviderId, serviceProvided])
+}
+
+enum ServiceStatus {
+  OPEN
+  ASSIGNED
+  INPROGRESS
+  BLOCKED
+  COMPLETED
+}
+
+model Account {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @db.ObjectId
+  type String
+  provider String
+  providerAccountId String
+  refresh_token String? @db.String
+  access_token String? @db.String
+  expires_at Int?
+  token_type String?
+  scope String?
+  id_token String? @db.String
+  session_state String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Land {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  title String
+  description String
+  imageSrc String[]
+  category String
+  landType String?
+  landUse String?
+  interestType String?
+  landArea Int
+  otherLands Int
+  address String
+  longitude String
+  latitude String
+  userId String @db.ObjectId
+  price Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bids Bid[]
+  documents Document[]
+  landCost LandCost?
+  images LandImage[]
+  services LandService[]
+}
+
+model Bid {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  bidderId String @db.ObjectId
+  landOwnerId String @db.ObjectId
+  landId String @db.ObjectId
+  originalPrice Int
+  offer Int
+  ownerDecision String?
+  user User @relation(fields: [bidderId], references: [id], onDelete: Cascade)
+  land Land @relation(fields: [landId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Document {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  uploaderId String @db.ObjectId
+  landId String @db.ObjectId
+  title String
+  documentSrc String
+  serviceId String @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  service LandService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  uploader ServiceProvider @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  land Land @relation(fields: [landId], references: [id], onDelete: Cascade)
+}
+
+model LandCost {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  siteVisit Int?
+  landsCommissionSearch Int?
+  legalAdvice Int?
+  barCode Int?
+  serviceFee Int?
+  saleAgreement Int?
+  conveyance Int?
+  oathOfProof Int?
+  stampDuty Int?
+  concurrence Int?
+  landTitle Int?
+  parcelPlane Int?
+  publication Int?
+  certificateTyping Int?
+  certificateIssuance Int?
+  landId String @db.ObjectId @unique
+  landOwnerId String @db.ObjectId
+
+  land Land  @relation(fields: [landId], references: [id])
+
+}
+
+model LandImage {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  title String
+  imageSrc String
+  alt String
+  landId String @db.ObjectId
+  uploaderId String @db.ObjectId
+  serviceId String @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  uploader ServiceProvider @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  service LandService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  land Land @relation(fields: [landId], references: [id], onDelete: Cascade)
+
+}
